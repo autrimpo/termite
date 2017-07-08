@@ -675,7 +675,7 @@ static void move_to_eol(VteTerminal *vte, select_info *select) {
 }
 
 template<typename F>
-static void move_forward(VteTerminal *vte, select_info *select, F is_word) {
+static void move_forward(VteTerminal *vte, select_info *select, F is_word, bool goto_word_end) {
     long cursor_col, cursor_row;
     vte_terminal_get_cursor_position(vte, &cursor_col, &cursor_row);
 
@@ -701,15 +701,24 @@ static void move_forward(VteTerminal *vte, select_info *select, F is_word) {
 
     bool end_of_word = false;
 
-    for (long i = 1; i < length; i++) {
-        if (is_word(codepoints[i - 1])) {
-            if (end_of_word) {
+    if (!goto_word_end) {
+        for (long i = 1; i < length; i++) {
+            if (is_word(codepoints[i - 1])) {
+                if (end_of_word) {
+                    break;
+                }
+            } else {
+                end_of_word = true;
+            }
+            cursor_col++;
+        }
+    } else {
+        for (long i = 2; i <= length; i++) {
+            cursor_col++;
+            if (is_word(codepoints[i - 1]) && !is_word(codepoints[i])) {
                 break;
             }
-        } else {
-            end_of_word = true;
         }
-        cursor_col++;
     }
     vte_terminal_set_cursor_position(vte, cursor_col, cursor_row);
     update_selection(vte, select);
@@ -717,12 +726,20 @@ static void move_forward(VteTerminal *vte, select_info *select, F is_word) {
     g_free(codepoints);
 }
 
+static void move_forward_end_word(VteTerminal *vte, select_info *select) {
+    move_forward(vte, select, is_word_char, true);
+}
+
+static void move_forward_end_blank_word(VteTerminal *vte, select_info *select) {
+    move_forward(vte, select, std::not1(std::ref(g_unichar_isspace)), true);
+}
+
 static void move_forward_word(VteTerminal *vte, select_info *select) {
-    move_forward(vte, select, is_word_char);
+    move_forward(vte, select, is_word_char, false);
 }
 
 static void move_forward_blank_word(VteTerminal *vte, select_info *select) {
-    move_forward(vte, select, std::not1(std::ref(g_unichar_isspace)));
+    move_forward(vte, select, std::not1(std::ref(g_unichar_isspace)), false);
 }
 
 /* {{{ CALLBACKS */
@@ -852,6 +869,12 @@ gboolean key_press_cb(VteTerminal *vte, GdkEventKey *event, keybind_info *info) 
                 break;
             case GDK_KEY_W:
                 move_forward_blank_word(vte, &info->select);
+                break;
+            case GDK_KEY_e:
+                move_forward_end_word(vte, &info->select);
+                break;
+            case GDK_KEY_E:
+                move_forward_end_blank_word(vte, &info->select);
                 break;
             case GDK_KEY_0:
             case GDK_KEY_Home:
@@ -1391,25 +1414,35 @@ static void load_config(GtkWindow *window, VteTerminal *vte, config_info *info,
                         char **geometry, char **icon, gboolean *has_alpha) {
     const std::string default_path = "/termite/config";
     GKeyFile *config = g_key_file_new();
+    GError *error = nullptr;
 
     gboolean loaded = FALSE;
 
     if (info->config_file) {
         loaded = g_key_file_load_from_file(config,
                                            info->config_file,
-                                           G_KEY_FILE_NONE, nullptr);
+                                           G_KEY_FILE_NONE, &error);
+        if (!loaded)
+            g_printerr("%s parsing failed: %s\n", info->config_file,
+                       error->message);
     }
 
     if (!loaded) {
         loaded = g_key_file_load_from_file(config,
                                            (g_get_user_config_dir() + default_path).c_str(),
-                                           G_KEY_FILE_NONE, nullptr);
+                                           G_KEY_FILE_NONE, &error);
+        if (!loaded)
+            g_printerr("%s parsing failed: %s\n", (g_get_user_config_dir() + default_path).c_str(),
+                       error->message);
     }
 
     for (const char *const *dir = g_get_system_config_dirs();
          !loaded && *dir; dir++) {
         loaded = g_key_file_load_from_file(config, (*dir + default_path).c_str(),
-                                           G_KEY_FILE_NONE, nullptr);
+                                           G_KEY_FILE_NONE, &error);
+        if (!loaded)
+            g_printerr("%s parsing failed: %s\n", (*dir + default_path).c_str(),
+                       error->message);
     }
 
     if (loaded) {
