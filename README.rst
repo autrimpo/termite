@@ -61,6 +61,8 @@ INSERT MODE
 +----------------------+---------------------------------------------+
 | ``shift-pagedown``   | scroll down a page                          |
 +----------------------+---------------------------------------------+
+| ``ctrl-shift-l``     | reset and clear                             |
++----------------------+---------------------------------------------+
 | ``ctrl-+``           | increase font size                          |
 +----------------------+---------------------------------------------+
 | ``ctrl--``           | decrease font size                          |
@@ -116,6 +118,12 @@ SELECTION MODE
 +-----------------------------------+-----------------------------------------------------------+
 | ``B`` or ``ctrl-left``            | backward WORD (non-whitespace)                            |
 +-----------------------------------+-----------------------------------------------------------+
+| ``H``                             | jump to the top of the screen                             |
++-----------------------------------+-----------------------------------------------------------+
+| ``M``                             | jump to the middle of the screen                          |
++-----------------------------------+-----------------------------------------------------------+
+| ``L``                             | jump to the bottom of the screen                          |
++-----------------------------------+-----------------------------------------------------------+
 | ``0`` or ``home``                 | move cursor to the first column in the row                |
 +-----------------------------------+-----------------------------------------------------------+
 | ``^``                             | beginning-of-line (first non-blank character)             |
@@ -165,13 +173,13 @@ unique match.
 PADDING
 =======
 
-Internal padding can be added by using CSS to style the VTE widget. Adding the
-following snippet to ``$XDG_CONFIG_HOME/gtk-3.0/gtk.css`` (or
+Internal padding can be added by using CSS to style Termite. Adding
+the following snippet to ``$XDG_CONFIG_HOME/gtk-3.0/gtk.css`` (or
 ``~/.config/gtk-3.0/gtk.css``) will add uniform 2px padding around the edges:
 
 .. code:: css
 
-    VteTerminal, vte-terminal {
+    .termite {
         padding: 2px;
     }
 
