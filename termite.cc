@@ -565,6 +565,11 @@ static void move_to_row_start(VteTerminal *vte, select_info *select, long row) {
 }
 
 static void open_selection(char *browser, VteTerminal *vte) {
+    if (!vte_terminal_get_has_selection(vte)) {
+        g_printerr("no selection to open\n");
+        return;
+    }
+
     if (browser) {
         auto selection = make_unique(vte_terminal_get_selection(vte), g_free);
         if (selection && *selection) {
@@ -1806,7 +1811,11 @@ int main(int argc, char **argv) {
     } else {
         g_signal_connect(vte, "window-title-changed", G_CALLBACK(window_title_cb),
                          &info.config.dynamic_title);
-        window_title_cb(vte, &info.config.dynamic_title);
+        if (execute) {
+            gtk_window_set_title(GTK_WINDOW(window), execute);
+        } else {
+            window_title_cb(vte, &info.config.dynamic_title);
+        }
     }
 
     if (geometry) {
